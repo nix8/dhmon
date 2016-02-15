@@ -12,7 +12,7 @@ test:
 	echo $(wildcard $(CURDIR)/src/*_test.py) | xargs -n 1 coverage run -p)
 
 install:
-	python setup.py install --root $(DESTDIR) $(COMPILE)
+	python3 setup.py install --root $(DESTDIR) $(COMPILE)
 	mkdir -p $(DESTDIR)/opt/snmpcollector/src/
 	cp src/*.py $(DESTDIR)/opt/snmpcollector/src/
 	ln -sf /opt/snmpcollector/src/trigger.py \

@@ -13,3 +13,6 @@ SNMP_ANNOTATORS=2
 
 # snmpcollector only supports one exporter currently
 SNMP_EXPORTERS=1
+
+SNMP_INSTANCE=default
+

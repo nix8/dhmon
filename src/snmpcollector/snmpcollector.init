@@ -21,6 +21,7 @@ if [ -r /etc/default/snmpcollector ]; then
   . /etc/default/snmpcollector
 fi
 
+[ -z "$SNMP_INSTANCE" ] && SNMP_INSTANCE="default"
 
 stage() {
   local action=$1
@@ -49,7 +50,7 @@ stage() {
     if [[ "$action" == "start" ]]; then
       echo -n " $i"
       start-stop-daemon -b --start --oknodo --pidfile $PIDFILE \
-        --startas $BASE/$script -- --pid $PIDFILE
+        --startas $BASE/$script -- --instance=$SNMP_INSTANCE --pid $PIDFILE
       ret=$?
     elif [[ "$action" == "stop" ]]; then
       echo -n " $i"
