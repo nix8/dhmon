@@ -37,8 +37,12 @@ class Stage(object):
 
   def _setup(self):
     root = logging.getLogger()
-    root.addHandler(logging.handlers.SysLogHandler('/dev/log'))
     root.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh = logging.FileHandler('/var/log/snmpcollector.log')
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.INFO)
+    root.addHandler(fh)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
