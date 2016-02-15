@@ -52,7 +52,7 @@ class Supervisor(object):
     # possible to record pipeline latency
     yield actions.Summary(timestamp, targets)
 
-    logging.info('New work pushed')
+    logging.info('New work pushed(%s)' % targets)
 
 
 if __name__ == '__main__':

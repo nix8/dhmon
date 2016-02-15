@@ -8,7 +8,7 @@ import actions
 import config
 import snmp
 import stage
-
+import re
 
 class Annotator(object):
   """Annotation step where results are given meaningful labels."""
@@ -57,6 +57,13 @@ class Annotator(object):
       resolve = self.mibcache.get(oid, None)
       if resolve is None:
         resolve = self.mibresolver.resolve(oid)
+        if resolve is not None:
+            m = re.search(r'[.]\d+$', resolve[0])
+            # if the string ends in digits m will be a Match object, or None otherwise.
+            if m is None:
+               lst = list(resolve)
+               lst[0] = "%s.0" % lst[0]
+               resolve = tuple(lst)
         self.mibcache[oid] = resolve
       if resolve is None:
         logging.warning('Failed to look up OID %s, ignoring', oid)

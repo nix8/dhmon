@@ -93,10 +93,9 @@ class Worker(object):
 
     overriden_results = results
     for oid, result in results.iteritems():
-      root = '.'.join(oid.split('.')[:-1])
+      root = '.'.join(oid[0].split('.')[:-1])
       if root in overridden_oids:
-        overriden_results[oid] = snmp.ResultTuple(
-            result.value, overrides[root])
+        overriden_results[oid] = snmp.ResultTuple( result.value, overrides[root])
     return overriden_results
 
   def do_snmp_walk(self, run, target):

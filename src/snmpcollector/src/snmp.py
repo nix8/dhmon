@@ -107,9 +107,11 @@ class SnmpTarget(object):
 
     # Abort the walk when it exits the OID tree we are interested in
     while nextoid.startswith(oid):
-      var_list = netsnmp.VarList(netsnmp.Varbind(nextoid, offset))
-      sess.getbulk(nonrepeaters=0, maxrepetitions=self._max_size,
-                   varlist=var_list)
+      if offset == 0:
+         var_list = netsnmp.VarList(netsnmp.Varbind(nextoid))
+      else:
+         var_list = netsnmp.VarList(netsnmp.Varbind(nextoid, offset))
+      sess.getbulk(nonrepeaters=0, maxrepetitions=self._max_size, varlist=var_list)
 
       # WORKAROUND FOR NEXUS BUG (2014-11-24)
       # Indy told blueCmd that Nexus silently drops the SNMP response
@@ -134,6 +136,8 @@ class SnmpTarget(object):
         ret[currentoid] = ResultTuple(result.val, result.type)
       # Continue bulk walk
       offset = int(var_list[-1].iid)
+      if offset == 0:
+         break
       nextoid = var_list[-1].tag
     return ret
 
