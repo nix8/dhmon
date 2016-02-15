@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import argparse
 import sys
 import time
@@ -11,7 +11,7 @@ class Trigger(object):
 
   def trigger(self, tag):
     # We do not support any arguments for this helper
-    sys.argv = (sys.argv[0],)
+    #sys.argv = (sys.argv[0],)
     trigger = stage.Stage(self)
     trigger.startup()
     run = actions.RunInformation(
@@ -22,5 +22,6 @@ class Trigger(object):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('tag', nargs='?', default='', help='tag to trigger')
+  parser.add_argument('-i', '--instance', dest='instance', default='default', help='specifiy instance id, used to run multiple instances')
   args = parser.parse_args()
   Trigger().trigger(args.tag)
