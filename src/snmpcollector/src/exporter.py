@@ -95,7 +95,7 @@ class Exporter(object):
       SUMMARIES_COUNT.set(len(self.summaries))
 
   def _save(self, target, results):
-    for result in results.itervalues():
+    for result in results.values():
       self.export(target, result)
 
   def export(self, target, result):
