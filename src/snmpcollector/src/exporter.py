@@ -1,6 +1,6 @@
-#!/usr/bin/env pypy
-import BaseHTTPServer
-import SocketServer
+#!/usr/bin/env pypy3
+import http.server
+import socketserver
 import base64
 import logging
 import prometheus_client
@@ -165,7 +165,7 @@ if __name__ == '__main__':
   # work in daemon mode, which is odd. I need to debug this more.
   # For now, run the exporter like 'python src/exporter.py -d'
 
-  class MetricsHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  class MetricsHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
       self.send_response(200)
       self.send_header(
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
 
   class ThreadedHTTPServer(
-      SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+      socketserver.ThreadingMixIn, http.server.HTTPServer):
     pass
 
   class PrometheusMetricsServer(threading.Thread):
