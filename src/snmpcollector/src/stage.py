@@ -95,7 +95,7 @@ class Stage(object):
   def _task_wrapper_callback(self, channel, method, properties, body):
     try:
       self._task_callback(channel, method, properties, body)
-    except Exception, e:
+    except Exception as e:
       logging.exception('Unhandled exception in task loop:')
     finally:
       # Ack now, if we die during sending we will hopefully not crash loop
@@ -161,10 +161,10 @@ class Stage(object):
       self.task_channel.start_consuming()
     except KeyboardInterrupt:
       logging.error('Keyboard interrupt, shutting down..')
-    except Exception, e:
+    except Exception as e:
       logging.exception('Unhandled exception, restarting stage')
 
     try:
       self.shutdown()
-    except Exception, e:
+    except Exception as e:
       logging.exception('Exception in shutdown')

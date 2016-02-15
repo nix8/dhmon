@@ -17,7 +17,7 @@ class Config(object):
     self.timestamp = 0
 
   def load(filename=CONFIG_FILENAME):
-    with file(CONFIG_FILENAME, 'r') as f:
+    with open(CONFIG_FILENAME, 'r') as f:
       new_config = yaml.load(f)
     return new_config
 

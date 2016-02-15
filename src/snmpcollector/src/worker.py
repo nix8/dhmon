@@ -8,7 +8,9 @@ import config
 import multiprocessing
 import snmp
 import stage
-
+import time
+import itertools
+import sys
 
 # How many sub-workers to spawn to enumerate VLAN OIDs
 VLAN_MAP_POOL = 2
@@ -25,25 +27,49 @@ def _poll(data):
   errors = 0
   timeouts = 0
   results = {}
+
+
+  if sys.version_info[0] == 3:
+    t_oids = []
+    for oid in oids:
+      if not oid.startswith('.1'):
+        logging.warning('OID %s does not start with .1, please verify configuration', oid)
+        continue
+      t_oids.append(oid[1:])
+    logging.warning('Collecting %s on %s @ %s - fastsnmp', t_oids, target.host, vlan)
+    for k, v in target.walk_fastsnmp(t_oids, vlan).items():
+      results[(k,vlan)]=v
+    return results, errors, timeouts
+
   for oid in oids:
-    logging.debug('Collecting %s on %s @ %s', oid, target.host, vlan)
+    logging.warning('Collecting %s on %s @ %s', oid, target.host, vlan)
     if not oid.startswith('.1'):
       logging.warning(
           'OID %s does not start with .1, please verify configuration', oid)
       continue
     try:
-      results.update(
-          {(k, vlan): v for k, v in target.walk(oid, vlan).iteritems()})
-    except snmp.TimeoutError, e:
+      #results.update({(k, vlan): v for k, v in target.walk(oid, vlan).iteritems()})
+      if sys.version_info[0] == 3:
+        for k, v in target.walk(oid, vlan).items():
+            results[(k,vlan)]=v
+      else:
+        for k, v in target.walk(oid, vlan).iteritems():
+            results[(k,vlan)]=v
+    except snmp.TimeoutError as e:
       timeouts += 1
       if vlan:
         logging.debug(
             'Timeout, is switch configured for VLAN SNMP context? %s', e)
       else:
         logging.debug('Timeout, slow switch? %s', e)
-    except snmp.Error, e:
+    except snmp.Error as e:
       errors += 1
       logging.warning('SNMP error for OID %s@%s: %s', oid, vlan, str(e))
+
+#  print("S---%s---"%(target.host))
+#  for x in results:
+#     print("%s : %s" %(x,results[x]))
+#  print("E---")
   return results, errors, timeouts
 
 
@@ -66,7 +92,13 @@ class Worker(object):
 
     oids = set()
     vlan_aware_oids = set()
-    for collection_name, collection in config.get('collection').iteritems():
+
+    if sys.version_info[0] == 3:
+      iter_temp = config.get('collection').items()
+    else:
+      iter_temp = config.get('collection').iteritems()
+    #for collection_name, collection in config.get('collection').iteritems():
+    for collection_name, collection in iter_temp:
       for regexp in collection['models']:
         layers = collection.get('layers', None)
         if layers and target.layer not in layers:
@@ -92,33 +124,38 @@ class Worker(object):
     overridden_oids = set(overrides.keys())
 
     overriden_results = results
-    for oid, result in results.iteritems():
+    if sys.version_info[0] == 3:
+      iter_temp = results.items()
+    else:
+      iter_temp = results.iteritems()
+    for oid, result in iter_temp:
       root = '.'.join(oid[0].split('.')[:-1])
       if root in overridden_oids:
         overriden_results[oid] = snmp.ResultTuple( result.value, overrides[root])
     return overriden_results
 
   def do_snmp_walk(self, run, target):
+    starttime = time.time()
     results, errors, timeouts = self._walk(target)
     results = results if results else {}
-    logging.debug('Done SNMP poll (%d objects) for "%s"',
-        len(results.keys()), target.host)
+    logging.info('Done SNMP poll (%d objects) for "%s" lat:%s',
+        len(results.keys()), target.host, (time.time() - starttime) )
     yield actions.Result(target, results, actions.Statistics(timeouts, errors))
 
   def _walk(self, target):
     try:
       model = target.model()
-    except snmp.TimeoutError, e:
+    except snmp.TimeoutError as e:
       logging.exception('Could not determine model of %s:', target.host)
       return None, 0, 1
-    except snmp.Error, e:
+    except snmp.Error as e:
       logging.exception('Could not determine model of %s:', target.host)
       return None, 1, 0
     if not model:
       logging.error('Could not determine model of %s')
       return None, 1, 0
 
-    logging.debug('Object %s is model %s', target.host, model)
+    logging.info('Object %s is model %s', target.host, model)
     global_oids, vlan_oids = self.gather_oids(target, model)
 
     timeouts = 0
@@ -129,7 +166,7 @@ class Worker(object):
     try:
       if vlan_oids:
         vlans.update(target.vlans())
-    except snmp.Error, e:
+    except snmp.Error as e:
       errors += 1
       logging.warning('Could not list VLANs: %s', str(e))
 
@@ -137,10 +174,10 @@ class Worker(object):
     for vlan in list(vlans):
       oids = vlan_oids if vlan else global_oids
       to_poll.append((target, vlan, oids))
+      logging.info('to_poll.append %s %s', target.host, oids)
 
     results = {}
-    for part_results, part_errors, part_timeouts in self.pool.imap(
-        _poll, to_poll):
+    for part_results, part_errors, part_timeouts in self.pool.imap( _poll, itertools.islice(to_poll, 1) ):
       results.update(self.process_overrides(part_results))
       errors += part_errors
       timeouts += part_timeouts

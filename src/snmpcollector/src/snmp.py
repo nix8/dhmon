@@ -58,7 +58,7 @@ class SnmpTarget(object):
         self.auth == other.auth and self.priv_proto == other.priv_proto and
         self.priv == other.priv and self.sec_level == other.sec_level)
 
-  def _snmp_session(self, vlan=None, timeout=1000000, retries=3):
+  def _snmp_session(self, vlan=None, timeout=2000000, retries=3):
     # Since pickle will import this module we do not want to drag netsnmp into
     # this on every load. Load it when we need it.
     global _NETSNMP_CACHE
@@ -69,6 +69,10 @@ class SnmpTarget(object):
       _NETSNMP_CACHE = netsnmp
     else:
       netsnmp = _NETSNMP_CACHE
+
+    if sys.version_info[0] == 3:
+      from fastsnmp import snmp_poller 
+      return ""
 
     if first_load:
       # Loading MIBs can be very noisy, so we close stderr
@@ -99,12 +103,45 @@ class SnmpTarget(object):
       os.close(stderr)
     return session
 
+  def walk_fastsnmp(self, oids, vlan=None):
+    ret = {}
+
+    from fastsnmp import snmp_poller
+  
+    new_oids = {}
+    for oid in oids:
+      m_oid = oid.rstrip('1234567890')
+      if new_oids.get( m_oid, None ) == None:
+         new_oids[m_oid] = ({})
+      new_oids[m_oid][oid] = 0
+
+    for oid_base in new_oids:
+      t_oids = ([]) 
+      for oid in new_oids[oid_base]:
+         t_oids.append(oid)
+      snmp_data = snmp_poller.poller((self.ip,), tuple([t_oids]), self.community)
+      for data in snmp_data:
+        snmp_host, snmp_oid, snmp_idx, snmp_value, snmp_type = data
+        ret[ ".%s.%s" %(snmp_oid, snmp_idx) ] = ResultTuple(snmp_value, snmp_type)
+
+    return ret
+
+
   def walk(self, oid, vlan=None):
-    sess, netsnmp = self._snmp_session(vlan)
     ret = {}
     nextoid = oid
     offset = 0
 
+    if sys.version_info[0] == 3:
+      from fastsnmp import snmp_poller
+      snmp_data =[x for x in snmp_poller.poller((self.ip,), ([oid[1:]],), self.community) ]
+     
+      for data in snmp_data:
+          snmp_host, snmp_oid, snmp_idx, snmp_value, snmp_type = data
+          ret[ ".%s.%s" %(snmp_oid, snmp_idx) ] = ResultTuple(snmp_value, snmp_type)
+      return ret
+
+    sess, netsnmp = self._snmp_session(vlan)
     # Abort the walk when it exits the OID tree we are interested in
     while nextoid.startswith(oid):
       if offset == 0:
@@ -142,7 +179,18 @@ class SnmpTarget(object):
     return ret
 
   def get(self, oid):
-    sess, netsnmp = self._snmp_session(timeout=500000, retries=2)
+
+    if sys.version_info[0] == 3:
+      from fastsnmp import snmp_poller
+      snmp_data =[x for x in snmp_poller.poller((self.ip,), ([oid[1:]],), self.community) ]
+      if len(snmp_data) == 0:
+         return { oid: ResultTuple("", "OCTETSTR") }
+      return { oid: ResultTuple(snmp_data[0][3], snmp_data[0][4]) }
+
+
+
+    sess, netsnmp = self._snmp_session(timeout=5000000, retries=2)
+
     var = netsnmp.Varbind(oid)
     var_list = netsnmp.VarList(var)
     sess.get(var_list)
@@ -152,6 +200,7 @@ class SnmpTarget(object):
       raise SnmpError('SNMP error while talking to host %s: %s' % (
         self.host, sess.ErrorStr))
 
+
     return {var.tag: ResultTuple(var.val, var.type)}
 
   def model(self):
@@ -160,12 +209,16 @@ class SnmpTarget(object):
         '.1.3.6.1.2.1.47.1.1.1.1.13.1001',  # Stacked switches
         '.1.3.6.1.2.1.47.1.1.1.1.13.10',    # Nexus
         '.1.3.6.1.2.1.1.1.0',               # Other appliances (sysDescr)
+        '.1.3.6.1.2.1.1.1',                 # Other appliances (sysDescr)
     ]
     for oid in model_oids:
       model = self.get(oid)
       if not model:
         continue
-      value = model.values().pop().value
+      if sys.version_info[0] < 3:
+        value = model.values().pop().value
+      else:
+        value = list(model.values()).pop().value
       if value:
         return value
     raise NoModelOid('No model OID contained a model')
@@ -175,6 +228,6 @@ class SnmpTarget(object):
       oids = self.walk('.1.3.6.1.4.1.9.9.46.1.3.1.1.2').keys()
       vlans = {int(x.split('.')[-1]) for x in oids}
       return vlans
-    except ValueError, e:
+    except ValueError as e:
       logging.info('ValueError while parsing VLAN for %s: %s', self.host, e)
       return []
