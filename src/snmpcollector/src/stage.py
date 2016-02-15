@@ -86,7 +86,8 @@ class Stage(object):
         expiration=str(expire) if expire else None)
     self.result_channel.basic_publish(
         exchange='', routing_key=action.get_queue(self.args.instance),
-        body=pickle.dumps((action, run), protocol=pickle.HIGHEST_PROTOCOL),
+        #body=pickle.dumps((action, run), protocol=pickle.HIGHEST_PROTOCOL),
+        body=pickle.dumps((action, run), protocol=2),
         properties=properties)
 
   def listen(self, action_cls):

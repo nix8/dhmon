@@ -125,18 +125,18 @@ class Exporter(object):
       # Since the label map will be mutated we need to do a deep copy here.
       with self.copy_lock:
         metrics_copy = {}
-        for obj, (mib, type, labels) in self.metrics.iteritems():
+        for obj, (mib, type, labels) in self.metrics.items():
           metrics_copy[obj] = (mib, type, dict(labels))
 
       # Assemble the output
       out = []
-      for obj, (mib, metrics_type, labels_map) in metrics_copy.iteritems():
+      for obj, (mib, metrics_type, labels_map) in metrics_copy.items():
         if metrics_type != 'counter' and metrics_type != 'gauge':
           continue
         out.append('# HELP {0} {1}::{0}\n'.format(obj, mib))
         out.append('# TYPE {0} {1}\n'.format(obj, metrics_type))
         for (host, layer, index, type), (value, timestamp, add_labels) in (
-            labels_map.iteritems()):
+            labels_map.items()):
 
           labels = dict(add_labels)
           labels['device'] = host
@@ -144,7 +144,7 @@ class Exporter(object):
           labels['index'] = index
           labels['type'] = type
 
-          label_list = ['{0}="{1}"'.format(k, v) for k, v in labels.iteritems()]
+          label_list = ['{0}="{1}"'.format(k, v) for k, v in labels.items()]
           label_string = ','.join(label_list)
           instance = ''.join([obj, '{', label_string, '}'])
 
