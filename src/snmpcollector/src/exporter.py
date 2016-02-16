@@ -81,6 +81,8 @@ class Exporter(object):
         len(results), target.host)
 
     # Try to see if we're done with this round
+    if timestamp not in self.seen_targets:
+       self.seen_targets[timestamp] = []
     self.seen_targets[timestamp].add(target)
     max_targets = self.summaries.get(timestamp, None)
     if max_targets is None:
@@ -156,7 +158,7 @@ class Exporter(object):
 
   def write_metrics(self, out):
     for row in self.prometheus_output:
-      out.write(row)
+      out.write(bytes(row, 'ASCII'))
 
 
 if __name__ == '__main__':
