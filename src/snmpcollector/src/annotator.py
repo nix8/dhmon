@@ -211,7 +211,7 @@ class Annotator(object):
             oid, value)
         return None
       value = enum_value
-    return value
+    return str(value)
 
   def string_to_label_value(self, value):
     value = ''.join(x for x in value.strip() if x in self.ALLOWED_CHARACTERS)
