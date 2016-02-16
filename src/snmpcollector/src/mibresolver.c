@@ -23,7 +23,7 @@ static PyObject *resolve(PyObject *self, PyObject *args) {
   PyObject *enum_map;
 
   if (!PyArg_ParseTuple(args, "s", &input)) {
-    return NULL;
+    Py_RETURN_NONE;
   }
 
   if (read_objid(input, name, &name_length) != 1) {
@@ -39,8 +39,8 @@ static PyObject *resolve(PyObject *self, PyObject *args) {
   if (tp->enums) {
     struct enum_list *ep = tp->enums;
     while (ep) {
-      PyDict_SetItem(enum_map, PyString_FromFormat("%d", ep->value),
-          PyString_FromString(ep->label));
+      PyDict_SetItem(enum_map, PyBytes_FromFormat("%d", ep->value),
+          PyBytes_FromString(ep->label));
       ep = ep->next;
     }
   }
@@ -48,14 +48,32 @@ static PyObject *resolve(PyObject *self, PyObject *args) {
   return Py_BuildValue("sO", output, enum_map);
 }
 
+
+
+
 static PyMethodDef module_funcs[] = {
   { "resolve", resolve, METH_VARARGS, "Try to resolve a given OID." },
   { NULL, NULL, 0, NULL }
 };
 
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "mibresolver",     /* m_name */
+        "MIB resolver utilities",  /* m_doc */
+        -1,                  /* m_size */
+        module_funcs,        /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
-void initmibresolver(void) {
-  Py_InitModule3("mibresolver", module_funcs, "MIB resolver utilities");
+#define INITERROR return NULL
+
+PyObject * PyInit_mibresolver(void) {
+  PyObject *module = PyModule_Create(&moduledef);
+
+  if (module == NULL) INITERROR;
 
   /* Turn off noisy MIB debug logging */
   netsnmp_register_loghandler(NETSNMP_LOGHANDLER_NONE, 0);
@@ -65,4 +83,6 @@ void initmibresolver(void) {
       NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DONT_BREAKDOWN_OIDS, 1);
 
   init_snmp("snmpapp");
+  return module;
 }
+
