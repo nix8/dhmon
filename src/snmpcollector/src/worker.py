@@ -103,7 +103,7 @@ class Worker(object):
         layers = collection.get('layers', None)
         if layers and target.layer not in layers:
           continue
-        if 'oids' in collection and re.match(regexp, model):
+        if 'oids' in collection and re.search(regexp, model, re.MULTILINE):
           logging.debug(
               'Model %s matches collection %s', model, collection_name)
           # VLAN aware collections are run against every VLAN.
