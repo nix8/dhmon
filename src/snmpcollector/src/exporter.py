@@ -83,7 +83,7 @@ class Exporter(object):
     # Try to see if we're done with this round
     if timestamp not in self.seen_targets:
        self.seen_targets[timestamp] = []
-    self.seen_targets[timestamp].add(target)
+    self.seen_targets[timestamp].append(target)
     max_targets = self.summaries.get(timestamp, None)
     if max_targets is None:
       return
